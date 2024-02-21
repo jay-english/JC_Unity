@@ -1,0 +1,343 @@
+---
+title: "Lab4_Jay_English"
+author: "Jay English"
+date: "2024-02-21"
+output:
+  html_document
+  
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+  
+library(tidyverse)
+```
+
+
+# Importing data
+```{r}
+surveys <- read_csv("data_raw/portal_data_joined.csv")
+```
+## Inspect the data
+
+``` {r}
+
+str(surveys)
+
+```
+## preview the data
+
+```{r}
+
+view(surveys)
+
+```
+
+## Selecting and filtering data
+
+```{r}
+
+# to select particular columns
+
+select(surveys, plot_id, species_id, weight)
+
+# to select all columns except certain ones
+
+select(surveys, -record_id, -species_id)
+
+# to filter out rows
+
+filter(surveys, year == 1995)
+
+# to select and filter at the same time
+
+surveys2 <- filter(surveys, weight < 5)
+surveys_sml <- select(surveys2, species_id, sex, weight)
+
+# OR use nested functions
+
+surveys_sml <- select(filter(surveys, weight < 5), species_id, sex, weight)
+
+# OR create a pipe
+
+surveys %>% 
+  filter(weight < 5) %>% 
+  select(species_id, sex, weight)
+
+# Finally, create a filtered object with the pipe
+
+surveys_sml <- surveys %>% 
+  filter(weight < 5) %>% 
+  select(species_id, sex, weight)
+
+# display the new tibble 
+
+surveys_sml
+```
+
+# CHALLENGE 1
+
+```{r}
+
+# Using pipes, subset the surveys data to include animals collected before 1995 and retain only the year, sex, and weight columns.
+
+challenge1 <- surveys %>% 
+  filter(year < 1995) %>% 
+  select(year, sex, weight)
+
+challenge1
+
+```
+
+# Mutate data
+
+```{r}
+
+# To create a new column of weight in kg
+
+surveys %>% 
+  mutate(weight_kg = weight / 1000)
+
+# Can create multiple new columns in the same call
+
+surveys %>% 
+  mutate(weight_kg = weight / 1000,
+         weight_lb = weight_kg * 2.2)
+
+# Use a pipe to view a head of the frame with new columns
+
+surveys %>% 
+  mutate(weight_kg = weight / 1000) %>% 
+  head()
+
+# Filter out non-pertinent rows when viewing
+
+surveys %>% 
+  filter(!is.na(weight)) %>% 
+  mutate(weight_kg = weight / 1000) %>% 
+  head()
+```
+
+# CHALLENGE 2
+
+```{r}
+# Create a new data frame from the surveys data that contains only the species_id column and a new column called hindfoot_cm containing the hindfoot_length values (currently in mm) converted to cm. In this column, there are no NAs and all calues are less than 3
+
+surveys %>% 
+  filter(!is.na(hindfoot_length)) %>% 
+  mutate(hindfoot_cm = hindfoot_length / 10) %>% 
+  filter(hindfoot_cm < 3) %>% 
+  select (species_id, hindfoot_cm) %>% 
+  head()
+
+```
+
+# Split-apply_combine and summarize functions
+
+```{r}
+
+# To compute mean weight by sex
+
+surveys %>% 
+  group_by(sex) %>% 
+  summarize(mean_weight = mean(weight, na.rm = TRUE))
+
+# Group by multiple columns. Tail views last six rows of summary (opposite of head)
+
+surveys %>%
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight, na.rm = TRUE)) %>%
+  tail()
+
+# Filter out NAs
+
+surveys %>%
+  filter(!is.na(weight)) %>%
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight))
+
+# display a particular number of rows of data with print (n)
+
+surveys %>%
+  filter(!is.na(weight)) %>%
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight)) %>%
+  print(n = 15)
+
+#Summarize multiple variables at once
+
+surveys %>%
+  filter(!is.na(weight)) %>%
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight),
+            min_weight = min(weight))
+
+# Sort or rearrange results
+
+surveys %>%
+  filter(!is.na(weight)) %>%
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight),
+            min_weight = min(weight)) %>%
+  arrange(min_weight)
+
+# Sort in descending order
+
+surveys %>%
+  filter(!is.na(weight)) %>%
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight),
+            min_weight = min(weight)) %>%
+  arrange(desc(mean_weight))
+
+```
+
+## Counting
+
+```{r}
+
+# Count the number of rows of data for each sex
+
+surveys %>%
+    count(sex)
+
+# This is equivalent to the following commands:
+
+surveys %>%
+    group_by(sex) %>%
+    summarize(count = n())
+
+# Count also has a sort argument to sort if desired
+
+surveys %>%
+    count(sex, sort = TRUE)
+
+# One can count combinations of factors, such as how many of each sex are in a given species:
+
+surveys %>%
+  count(sex, species)
+
+# Results can also be arranged
+
+surveys %>%
+  count(sex, species) %>%
+  arrange(species, desc(n))
+
+```
+# CHALLENGE 3
+
+```{r}
+
+surveys %>% 
+  count(plot_type)
+
+surveys %>% 
+  filter(!is.na(hindfoot_length)) %>% 
+  group_by(species_id) %>% 
+  summarise(mean_hindfoot_length =mean(hindfoot_length),
+            min_hindfoot_length = min(hindfoot_length),
+            max_hindfoot_length = max(hindfoot_length), 
+            n = n())
+
+surveys %>% 
+  filter(!is.na(weight)) %>% 
+  group_by(year) %>% 
+  filter(weight == max(weight)) %>% 
+  select(year, genus, species_id, weight) %>% 
+  arrange(year)
+```
+# Reshaping data
+
+```{r}
+#Create a simple data frame
+
+surveys_gw <- surveys %>% 
+  filter(!is.na(weight)) %>% 
+  group_by(plot_id, genus) %>% 
+  summarize(mean_weight = mean(weight))
+
+str(surveys_gw)
+
+#create a "wide" table 
+
+surveys_wide <- surveys_gw %>% 
+  pivot_wider(names_from = genus, values_from = mean_weight)
+
+str(surveys_wide)
+
+# Fill in missing values with a 0
+
+surveys_gw %>%
+  pivot_wider(names_from = genus, values_from = mean_weight, values_fill = 0) %>%
+  head()
+
+# Pivot longer. use - to exclude columns from reshaping (this was the same in both examples, so I didn't double-tupe it)
+
+surveys_long <- surveys_wide %>% 
+  pivot_longer(names_to = "genus", values_to = "mean_weight", cols = -plot_id)
+
+str(surveys_long)
+
+# Display the first six rows
+
+surveys_long %>% 
+  head()
+
+```
+# CHALLENGE 4
+
+```{r}
+
+# Reshape surveys with years as columns, plot_id as rows, and the number of genera per plot as values. Must summarize before reshaping and use n_distinct to see the number of genera.
+
+challenge4 <- surveys %>% 
+  group_by(plot_id, year) %>% 
+  summarize(n_genera = n_distinct(genus)) %>% 
+  pivot_wider(names_from = year, values_from = n_genera)
+
+# Now pivot longer that so each row is a unique plot_id by year4
+
+challenge4 %>% 
+  pivot_longer(names_to = "year", values_to = "n_genera", cols = -plot_id)
+
+# Create a dataset from surveys_long where a column called measurement and and a value column takes on the value of either hindfoot_length or weight
+
+surveys_long <- surveys %>% 
+  pivot_longer(names_to = "measurement", values_to = "value", cols = c(hindfoot_length, weight))
+
+# With this new set, calculate the average of each measurement in each year for each plot type. Then pivot wider into a data set with a column for hindfoot_length and weight
+
+surveys_long %>% 
+  group_by(year, measurement, plot_type) %>% 
+  summarize(mean_value = mean(value, na.rm = TRUE)) %>% 
+  pivot_wider(names_from = measurement, values_from = mean_value)
+
+```
+
+# Export Data
+
+```{r}
+# Remove observations with missing weight or hindfoot length values or without sex
+surveys_complete <- surveys %>% 
+  filter(!is.na(weight), !is.na(hindfoot_length), !is.na(sex))
+
+# Remove observations of rare species (observed less than 50 times)
+
+## Extract the most common species
+
+species_counts <- surveys_complete %>% 
+  count(species_id) %>% 
+  filter(n >= 50)
+
+## Only keep most common species
+
+surveys_complete <- surveys_complete %>%  filter(species_id %in% species_counts$species_id)
+
+dim(surveys_complete)
+
+# Export the data
+
+write_csv(surveys_complete, file = "data/surveys_complete.csv")
+
+```
