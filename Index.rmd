@@ -1,9 +1,19 @@
 ---
-title: "Index"
+title: "Posit-test Repo Site"
 author: "Jay English"
-date: "2024-02-14"
+date: "2024-02-22"
 output: html_document
 ---
-This is the home page for my github repository - https://github.com/jay-english/JC_Unity
 
-(For a Journal Club)
+My Github Repository
+
+Setup with Posit
+
+Test
+
+```{r}
+Welcome <- "Hello World"
+
+print(Welcome)
+```
+
