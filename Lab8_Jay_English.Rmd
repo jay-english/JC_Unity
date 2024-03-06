@@ -1,0 +1,231 @@
+---
+title: "Lab8_Jay_English"
+author: "Jay English"
+date: "2024-03-06"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: spacelab
+    highlight: breezedark
+---
+
+# Load needed packages
+
+```{r}
+library(tidyverse)
+library(knitr)
+library(DT)
+```
+
+# Kable
+
+Kable can be used to create a more readable simple table. DT can be used to create a more interactive simple table.
+
+```{r}
+iris_setosa <- iris %>% 
+  filter(Species == "setosa") %>% 
+  filter(Sepal.Length > 5)
+
+kable(iris_setosa)
+
+datatable(iris_setosa)
+```
+
+## Using datatable in R chunk
+
+There are two ways to use datatable: Bound the code you want to present, or create a new object.
+
+```{r}
+# Bound the code chunk you want to present
+
+datatable(
+  iris %>% 
+    filter(Species == "setosa") %>% 
+    filter(Sepal.Length > 5))
+
+# Create a new object
+
+iris_setosa <- iris %>% 
+  filter(Species == "setosa") %>% 
+  filter(Sepal.Length > 5)
+
+datatable(iris_setosa)
+```
+
+# Examples using the NEON data table
+
+## Load the table into R
+
+Note: I've renamed the downloaded table.
+
+```{r}
+NEON_MAGs <- read_csv("data/GOLD_NEON.csv")
+
+head(NEON_MAGs)
+
+str(NEON_MAGs)
+```
+
+## Remove the MAGs from the combined assembly
+
+```{r}
+NEON_MAGs_ind <- NEON_MAGs %>% 
+  filter(`Genome Name` != "NEON combined assembly")
+
+# Count the number of MQ and HQ genomes
+
+NEON_MAGs_ind %>% 
+  count(`Bin Quality`, sort = TRUE)
+
+# Display a kable of this
+
+kable(
+  NEON_MAGs_ind %>% 
+    count(`Bin Quality`)
+)
+
+# Display a datatable of this showing just HQ
+
+datatable(
+  NEON_MAGs_ind %>% 
+    filter(`Bin Quality` == "HQ")
+)
+```
+
+## Select the GDTB taxonomy and the MAGs genome size then filter to all MAGs greater than 10,000,000 bases
+
+```{r}
+kable(
+  NEON_MAGs_ind %>% 
+    select(c(`GTDB-Tk Taxonomy Lineage`, `Total Number of Bases`)) %>% 
+    filter(`Total Number of Bases` > 10000000)
+)
+
+# Use stringr to filter based on a string of characters in the column
+
+datatable(
+  NEON_MAGs_ind %>% 
+    filter(str_detect(`GTDB-Tk Taxonomy Lineage`, 'Bacteroidota'))
+)
+
+```
+
+## Filter to include only samples from Yellowstone
+
+```{r}
+datatable(
+  NEON_MAGs_ind %>% 
+    filter(str_detect(`Genome Name`, 'Yellowstone NP'))
+)
+```
+
+# Separate subcolumns
+
+subcolumns in a csv (separated by a ";") can be separated useing the separate function to create new columns. remove = FALSE keeps the original column.
+
+```{r}
+NEON_MAGs_ind_tax <- NEON_MAGs_ind %>% 
+  separate(`GTDB-Tk Taxonomy Lineage`, c("Domain", "Phylum", "Class", "Order", "Family", "Genus"), ";", remove = FALSE)
+```
+
+## Count the number of MAGs for each phylum
+
+```{r}
+datatable(NEON_MAGs_ind_tax %>% 
+  count(Phylum, sort = TRUE))
+```
+
+# Separate the information from the Genome Name column
+
+```{r}
+NEON_MAGs_ind_tax_sample <- NEON_MAGs_ind_tax %>% 
+  # Get rid of the phrase "Soil microbial community from" in the labels
+  mutate_at("Genome Name", str_replace, "Terrestrial soil microbial communities from", "") %>% 
+  
+  # Use the first "-" to splot the column in two
+  separate(`Genome Name`, c("Site", "Sample Name"), "-") %>% 
+  
+  # Get rid of the common phrase "S-comp-1"
+  mutate_at("Sample Name", str_replace, "-comp-1", "") %>% 
+  
+  # separate the sample name into Site ID and plot info
+  separate(`Sample Name`, c("Site ID", "subplot.layer.date"), "_", remove = FALSE) %>% 
+  
+  # separate the plot info into 3 columns
+  separate(`subplot.layer.date`, c("Subplot", "Layer", "Date"), "-",)
+```
+
+## Which site has the most MAGs?
+
+```{r}
+datatable(
+  NEON_MAGs_ind_tax_sample %>% 
+    count(Site, sort = TRUE)
+)
+```
+
+# Exercises
+
+## Exercise 1
+
+View iris to see the whole data table. Subset the data table based on a different species than was used in the example. Use DT to display.
+
+```{r}
+view(iris)
+
+datatable(
+  iris %>% 
+    filter(Species == "virginica")
+)
+```
+
+## Exercise 2
+
+Display using DT the NEON MAGs from individual assemblies that have at least 1 16s rRNA
+
+```{r}
+#view(NEON_MAGs_ind)
+
+datatable(
+  NEON_MAGs_ind %>% 
+    filter(`16s rRNA` >= 1))
+```
+
+## Exercise 3
+
+Display a table of MAGs from Lower Teakettle with only the columns for Genome Name, GTDB-Tk Taxonomy Lineage, and estimated MAG genome size.
+
+```{r}
+#view(NEON_MAGs_ind_tax_sample)
+
+datatable(
+  NEON_MAGs_ind %>% 
+    filter(str_detect(`Genome Name`, 'Lower Teakettle')) %>% 
+    select(c(`Genome Name`, `GTDB-Tk Taxonomy Lineage`, `Total Number of Bases`))
+)
+```
+
+## Exercise 4
+
+Display a table with Class counts at LBJ National Grasslands
+
+```{r}
+datatable(
+  NEON_MAGs_ind_tax %>% 
+    filter(str_detect(`Genome Name`, 'LBJ')) %>%     count(Class, sort = TRUE))
+```
+
+## Exercise 5
+
+Display a table with counts for the phylum Actinobacteroita at each site
+
+```{r}
+datatable(
+  NEON_MAGs_ind_tax_sample %>% 
+    filter(str_detect(`Phylum`, 'Actinobacteriota')) %>% 
+    count(Site, sort = TRUE)
+)
+```
+
