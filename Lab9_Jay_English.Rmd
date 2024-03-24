@@ -1,0 +1,503 @@
+---
+title: "Lab9_Jay_English"
+author: "Jay English"
+date: "2024-03-13"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: spacelab
+    highlight: breezedark
+---
+
+# Load the libraries
+
+```{r}
+library(tidyverse)
+library(plotly)
+```
+
+# Basic Graph Labels
+
+```{r}
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(aes(color=Species, shape=Species)) +
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width", color = "Plant Species", shape = "Plant Species")
+```
+
+# Themes 
+
+```{r}
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(aes(color=Species, shape=Species)) +
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width", color = "Plant Species", shape = "Plant Species") +
+  theme_classic()
+```
+
+# Colors
+
+```{r}
+iris_example_plot1 <- ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(color = "red", aes(shape = Species))+
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width") 
+
+```
+
+```{r}
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(aes(color = Species, shape = Species)) +
+    scale_color_manual(values=c("blue", "purple", "red")) +
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width") 
+```
+
+```{r}
+iris_example_plot2 <-ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(aes(color = Species, shape = Species)) +
+    scale_color_brewer(palette="Dark2") +
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width") 
+```
+
+```{r}
+library(viridisLite)
+  ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(aes(fill = Species), color = "black", pch=21) +
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width") 
+```
+
+```{r}
+library(viridisLite)
+  ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point(aes(color = Species, shape = Species)) +
+    scale_colour_viridis_d() +
+    labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width") 
+
+```
+
+# Graphic Output
+
+You can export as a pdf, svg, tiff, png, bmp, jpeg, and eps
+
+```{r}
+# Plot graph to a pdf outputfile
+#pdf("images/iris_example_plot1.pdf", width=6, height=3)
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + 
+  geom_point() +
+  labs(title = "Iris Sepal Length vs Wide", x = "Sepal Length", y = "Sepal Width") 
+dev.off()
+
+# Plot graph to a png outputfile
+ppi <- 300
+#png("images/iris_example_plot2.png", width=6*ppi, height=4*ppi, res=ppi)
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + 
+  geom_point()
+dev.off()
+```
+
+# Interactive graphs
+
+```{r}
+library(plotly)
+
+# Version 1
+ggplotly(
+  ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + 
+    geom_point()
+ )
+```
+
+```{r}
+# Version 2
+p <- ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + 
+  geom_point()
+ggplotly(p)
+```
+
+# NEON examples
+
+## Load tables into R
+
+```{r}
+NEON_MAGs <- read_csv("data/GOLD_NEON.csv") %>% 
+  # remove columns that are not needed for data analysis
+  select(-c(`GOLD Study ID`, `Bin Methods`, `Created By`, `Date Added`)) %>% 
+  # create a new column with the Assembly Type
+  mutate("Assembly Type" = case_when(`Genome Name` == "NEON combined assembly" ~ `Genome Name`,
+                            TRUE ~ "Individual")) %>% 
+  mutate_at("Assembly Type", str_replace, "NEON combined assembly", "Combined") %>% 
+  separate(`GTDB-Tk Taxonomy Lineage`, c("Domain", "Phylum", "Class", "Order", "Family", "Genus"), "; ", remove = FALSE) %>% 
+  # Get rid of the the common string "Soil microbial communities from "
+  mutate_at("Genome Name", str_replace, "Terrestrial soil microbial communities from ", "") %>% 
+  # Use the first `-` to split the column in two
+  separate(`Genome Name`, c("Site","Sample Name"), " - ") %>% 
+  # Get rid of the the common string "S-comp-1"
+  mutate_at("Sample Name", str_replace, "-comp-1", "") %>%
+  # separate the Sample Name into Site ID and plot info
+  separate(`Sample Name`, c("Site ID","subplot.layer.date"), "_", remove = FALSE,) %>% 
+  # separate the plot info into 3 columns
+  separate(`subplot.layer.date`, c("Subplot", "Layer", "Date"), "-") 
+
+```
+
+Remove Archaea
+
+```{r}
+NEON_MAGs_bact_ind <- NEON_MAGs %>% 
+  filter(Domain == "Bacteria") %>% 
+  filter(`Assembly Type` == "Individual") 
+```
+
+# Bar plots
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = Phylum)) +
+  geom_bar() +
+  coord_flip()
+```
+
+forcats puts counts in descending order
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = fct_infreq(Phylum))) +
+  geom_bar() +
+  coord_flip()
+```
+
+or you can pipe it
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+  count(Phylum) %>% 
+ggplot(aes(x = Phylum, y = n)) +
+  geom_col(stat = "identity") +
+  coord_flip()
+```
+
+in descending order:
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+  count(Phylum) %>% 
+ggplot(aes(x = reorder(Phylum, n), y = n)) +
+  geom_col(stat = "identity") +
+  coord_flip()
+```
+
+## Stacked vs multiple bar plots
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Phylum)), fill = Site)) +
+  geom_bar() +
+  theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 4)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_blank()) +
+  scale_y_continuous(n.breaks = 10) +
+  xlab("New Species") +
+  ylab("Count") +
+  labs(title = "Quality of New Species Data") +
+  coord_flip()
+
+
+
+
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Phylum)), fill = Site)) +
+  geom_bar(position = "dodge") +
+  theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 4)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_blank()) +
+  scale_y_continuous(n.breaks = 10) +
+  xlab("New Species") +
+  ylab("Count") +
+  labs(title = "Quality of New Species Data") +
+  coord_flip()
+```
+Bar width can be adjusted
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Phylum)), fill = Site)) +
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single")) +
+  coord_flip()
+```
+
+### Multiple panels (facet wrap)
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = Phylum)) +
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single")) +
+  coord_flip() +
+  facet_wrap(vars(Site), scales = "free", ncol = 2)
+```
+
+# Histograms
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = `Total Number of Bases`)) +
+  geom_histogram(bins = 50) 
+```
+
+# Box Plots
+
+```{r}
+NEON_MAGs_bact_ind %>%   
+ggplot(aes(x = fct_infreq(Phylum), y = `Total Number of Bases`)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+```
+
+## Showing each point in the plot
+
+```{r}
+NEON_MAGs_bact_ind %>%   
+ggplot(aes(x = fct_infreq(Phylum), y = `Total Number of Bases`)) +
+  geom_point() +
+  coord_flip()
+```
+
+# Exercises
+
+For all exercises make complete graphs that are report ready. Relabel the x-axis, y-axis and legend for clarity, add a title, add color and size appropriately. The NAs in the taxonomy indicate a novel species starting with the highest level. For example a NA in a class that has an assigned phylum Proteobacteria would be a novel class in the phylum Proteobacteria.
+
+
+## Exercise 1
+
+What are the overall class MAG counts?
+
+The counts are displayed in the following graph:
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+  count(Class) %>% 
+ggplot(aes(x = reorder(Class, n), y = n)) +
+  geom_bar(stat = "Identity", fill = "red") +
+  xlab("Class") +
+  ylab("Count") +
+  labs(title = "MAG Counts by Class") +
+  theme( axis.text.y = element_text(size = 4)) +
+  coord_flip()
+```
+
+## Exercise 2
+
+What are the MAG counts for each subplot? Color by site ID.
+
+```{r}
+ 
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Class)), fill = Site)) +
+  geom_bar(position = position_dodge2(width = 0.5, preserve = "single")) +
+ theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 2, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 2)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.x = element_text(size = 4, angle = 90)) +
+  xlab("Class") +
+  ylab("Count") +
+  labs(title = "MAG Counts by Class and Site")
+  
+```
+
+## Exercise 3
+
+How many novel bacteria were discovered? Show the number of NAs for each site
+
+```{r}
+
+
+NEON_MAGs_bact_ind %>%
+  filter(is.na(Genus)) %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Genus)), fill = Site)) +
+  geom_bar(position = position_dodge2(width = 0.5, preserve = "single")) +
+ theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 2.2)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_blank()) +
+  xlab("New Species") +
+  ylab("Count") +
+  labs(title = "New Species at a Given Site") +
+  coord_flip()
+  
+```
+
+## Exercise 4
+
+How many novel bacterial MAGs are high vs medium quality?
+
+```{r}
+NEON_MAGs_bact_ind %>%
+  filter(is.na(Genus)) %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Genus)), fill = `Bin Quality`)) +
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single")) +
+ theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 4)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_blank()) +
+  scale_y_continuous(n.breaks = 10) +
+  xlab("New Species") +
+  ylab("Count") +
+  labs(title = "Quality of New Species Data") +
+  coord_flip()
+```
+
+## Exercise 5
+
+What phyla have novel bacterial genera?
+
+```{r}
+NEON_MAGs_bact_ind %>%
+  filter(is.na(Genus)) %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Genus)), fill = `Phylum`)) +
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single")) +
+ theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 4)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_blank()) +
+  scale_y_continuous(n.breaks = 20) +
+  xlab("New Genera") +
+  ylab("Count") +
+  labs(title = "Number of Novel Genera per Phylum") +
+  coord_flip()
+```
+
+## Exercise 6
+
+Make a stacked bar plot of the total number of MAGs at each site using phylum as the fill.
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Site)), fill = Phylum)) +
+  geom_bar() +
+  theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 4)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_text(size = 4)) +
+  scale_y_continuous(n.breaks = 12) +
+  xlab("Site") +
+  ylab("Count") +
+  labs(title = "Number of MAGs per Site by Plyla") +
+  coord_flip()
+```
+
+## Exercise 7
+
+Using facet_wrap make plots of the total number of MAGS at each site for each phylum.
+
+```{r}
+NEON_MAGs_bact_ind %>% 
+ggplot(aes(x = Site)) +
+  geom_bar(position = position_dodge2(width = 3, preserve = "single")) +
+  theme(axis.text.y = element_text(size = 2)) +
+  theme(axis.text.x = element_text(size = 4)) +
+  theme(axis.title.x = element_text(size = 6)) +
+  theme(axis.title.y = element_text(size = 6)) +
+  theme(axis.title.y.left = element_text(size = 2)) +
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = rel(0.3), margin = margin()),
+        panel.spacing = unit(3, "pt")) +
+  coord_flip() +
+  scale_y_continuous(n.breaks = 12) +
+  facet_wrap(vars(Phylum), scales = "fixed") +
+   xlab("Site") +
+  ylab("Total MAGs") +
+  labs(title = "Total number of MAGs per Site") 
+```
+
+## Exercise 8
+
+What is the relationship between MAGs genome size and the number of genes? Color by phylum.
+
+```{r}
+
+  ggplot(data = NEON_MAGs_bact_ind, aes(x = `Total Number of Bases`, y = `Gene Count`, color = Phylum)) + 
+    geom_point() +
+  theme(legend.position = "bottom") +
+  theme(legend.justification = "left") +
+  theme(legend.key.size = unit( 0.1, 'cm')) +
+  theme(legend.key.height = unit(0.1, 'cm')) +
+  theme(legend.key.width = unit(0.1, 'cm')) +
+  theme(legend.title = element_text(colour = "black", size = 4, face = "bold")) +
+  theme(legend.text = element_text(colour = "black", size = 4)) +
+  theme(legend.box.background = element_rect()) +
+  theme(legend.box.margin = margin(4, 4, 4, 4)) +
+  theme(legend.box.just = "left") +
+  theme( axis.text.y = element_text(size = 4)) +
+  scale_y_continuous(n.breaks = 12) +
+  xlab("Total Bases") +
+  ylab("Gene Count") +
+  labs(title = "Genome Size and Gene Number by Phylum") 
+ 
+```
+There is a strong positive correlation. 
+
+
+## Exercise 9
+
+What is the relationship between scaffold count and MAG completeness?
+
+```{r}
+ggplot(data = NEON_MAGs_bact_ind, aes(x = `Scaffold Count`, y = `Bin Completeness`,)) + 
+    geom_point(color = "blue") +
+  theme( axis.text.y = element_text(size = 10)) +
+  scale_y_continuous(n.breaks = 12) +
+  xlab("Scaffold Count") +
+  ylab("Percent Complete") +
+  labs(title = "Scaffold Count and Bin Completeness") 
+```
+
+There seems to be a slight negative correlation.
